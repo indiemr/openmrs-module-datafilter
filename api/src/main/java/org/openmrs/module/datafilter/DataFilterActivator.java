@@ -23,6 +23,7 @@ public class DataFilterActivator extends BaseModuleActivator {
 	@Override
 	public void started() {
 		log.info("Data Filter Module started");
+		registerEntityBasisMapSyncTask();
 	}
 	
 	/**
@@ -42,6 +43,45 @@ public class DataFilterActivator extends BaseModuleActivator {
 			log.info("Removing filter annotations");
 		}
 		//TODO Remove Annotations
+	}
+	
+	/**
+	 * Registers the Entity Basis Map sync task if it doesn't already exist. The task runs nightly at
+	 * midnight to backfill patients missing from the entity basis map.
+	 */
+	private void registerEntityBasisMapSyncTask() {
+		try {
+			org.openmrs.scheduler.SchedulerService schedulerService = org.openmrs.api.context.Context.getSchedulerService();
+			String taskName = "Entity Basis Map Sync Task";
+			
+			if (schedulerService.getTaskByName(taskName) != null) {
+				log.info("Entity Basis Map Sync Task already registered, skipping.");
+				return;
+			}
+			
+			org.openmrs.scheduler.TaskDefinition task = new org.openmrs.scheduler.TaskDefinition();
+			task.setName(taskName);
+			task.setDescription("Nightly backfill of patients missing from the entity basis map "
+			        + "using the doctorAdminParentLocation person attribute.");
+			task.setTaskClass(org.openmrs.module.datafilter.impl.EntityBasisMapSyncTask.class.getName());
+			task.setRepeatInterval(86400L); // 24 hours
+			task.setStartOnStartup(true);
+			
+			// Schedule first run at midnight tonight
+			java.util.Calendar midnight = java.util.Calendar.getInstance();
+			midnight.add(java.util.Calendar.DAY_OF_MONTH, 1);
+			midnight.set(java.util.Calendar.HOUR_OF_DAY, 0);
+			midnight.set(java.util.Calendar.MINUTE, 0);
+			midnight.set(java.util.Calendar.SECOND, 0);
+			midnight.set(java.util.Calendar.MILLISECOND, 0);
+			task.setStartTime(midnight.getTime());
+			
+			schedulerService.saveTaskDefinition(task);
+			log.info("Registered Entity Basis Map Sync Task (first run at midnight: " + midnight.getTime() + ")");
+		}
+		catch (Exception e) {
+			log.error("Failed to register Entity Basis Map Sync Task", e);
+		}
 	}
 	
 }

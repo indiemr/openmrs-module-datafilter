@@ -72,6 +72,21 @@
             reference application.
         </description>
     </globalProperty>
+    <globalProperty>
+        <property>${project.parent.artifactId}.entityBasisMapSyncTask.enabled</property>
+        <defaultValue>true</defaultValue>
+        <description>
+            When true, the nightly task backfills patients missing from the entity basis map.
+        </description>
+    </globalProperty>
+    <globalProperty>
+        <property>${project.parent.artifactId}.entityBasisMapSyncTask.locationAttributeTypeUuid</property>
+        <defaultValue>6bcbb73a-bac7-4a1b-8eb4-7454cbbd08c4</defaultValue>
+        <description>
+            UUID of the person attribute type storing the patient's location.
+            Default: doctorAdminParentLocation.
+        </description>
+    </globalProperty>
 
     <extension>
         <point>org.openmrs.userForm.custom.extension</point>
