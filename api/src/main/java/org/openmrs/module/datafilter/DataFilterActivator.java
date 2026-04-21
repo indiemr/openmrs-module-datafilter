@@ -47,7 +47,7 @@ public class DataFilterActivator extends BaseModuleActivator {
 	
 	/**
 	 * Registers the Entity Basis Map sync task if it doesn't already exist. The task runs nightly at
-	 * midnight to backfill patients missing from the entity basis map.
+	 * midnight IST to backfill patients missing from the entity basis map.
 	 */
 	private void registerEntityBasisMapSyncTask() {
 		try {
@@ -70,7 +70,8 @@ public class DataFilterActivator extends BaseModuleActivator {
 			// Schedule first run at midnight IST tonight. Pin the timezone explicitly so the
 			// schedule is independent of the container's JVM default timezone (UAT and prod
 			// container TZ is not guaranteed to be IST; midnight UTC, for example, is 05:30
-			// IST — during morning OPD — which would be the wrong window).
+			// IST — during morning OPD — which would be the wrong window). The nightly 2 AM IST
+			// backup runs 2 hours later and captures the freshly-backfilled state.
 			java.util.Calendar midnight = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
 			midnight.add(java.util.Calendar.DAY_OF_MONTH, 1);
 			midnight.set(java.util.Calendar.HOUR_OF_DAY, 0);
@@ -86,7 +87,7 @@ public class DataFilterActivator extends BaseModuleActivator {
 			// now so the first run happens on the configured first-run date without requiring
 			// an extra restart.
 			schedulerService.scheduleTask(task);
-			log.info("Registered Entity Basis Map Sync Task (first run at midnight: " + midnight.getTime() + ")");
+			log.info("Registered Entity Basis Map Sync Task (first run at midnight IST: " + midnight.getTime() + ")");
 		}
 		catch (Exception e) {
 			log.error("Failed to register Entity Basis Map Sync Task", e);
