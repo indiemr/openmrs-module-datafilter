@@ -35,17 +35,17 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 	
 	@Override
 	public void execute() {
-		if (!isExecuting) {
+		if (isExecuting) {
 			if (log.isDebugEnabled()) {
 				log.debug("Not executing Entity Basis Map sync task (already running)");
 			}
 			return;
 		}
-		
+
+		startExecuting();
 		try {
-			startExecuting();
 			log.info("Starting Entity Basis Map sync task...");
-			
+
 			AdministrationService adminService = Context.getAdministrationService();
 			
 			// Check if the task is enabled
