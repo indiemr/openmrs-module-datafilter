@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+
+    This Source Code Form is subject to the terms of the Mozilla Public License,
+    v. 2.0. If a copy of the MPL was not distributed with this file, You can
+    obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+    the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+
+    Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
+    graphic logo is a trademark of OpenMRS Inc.
+
+    Seed data used by EntityBasisMapSyncTaskTest. Layers on top of moduleTestData.xml:
+    - a person_attribute_type named "doctorAdminParentLocation"
+    - a person_attribute on patient 1001 with value = location 4000's UUID
+
+    The happy-path test asserts that after the task runs, a datafilter_entity_basis_map
+    row exists with basis_identifier = "4000" (numeric), not the location UUID.
+
+-->
+
+<dataset>
+    <person_attribute_type person_attribute_type_id="8000"
+                           name="doctorAdminParentLocation"
+                           description="Parent location of the patient's doctor/admin (stores location UUID)"
+                           format="java.lang.String"
+                           searchable="false"
+                           creator="1"
+                           date_created="2026-04-20 00:00:00.0"
+                           retired="false"
+                           sort_weight="0"
+                           uuid="a1a0c6a1-4f2e-4a3b-8c1f-eb00cd010101" />
+
+    <person_attribute person_attribute_id="9000"
+                      person_id="1001"
+                      value="1d6c993e-c2cc-11de-8d13-0010c6dffd0e"
+                      person_attribute_type_id="8000"
+                      creator="1"
+                      date_created="2026-04-20 00:00:00.0"
+                      voided="false"
+                      uuid="a1a0c6a1-4f2e-4a3b-8c1f-eb00cd020202" />
+</dataset>

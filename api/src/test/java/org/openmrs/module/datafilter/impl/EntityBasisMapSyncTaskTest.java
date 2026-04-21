@@ -9,6 +9,7 @@
  */
 package org.openmrs.module.datafilter.impl;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
@@ -18,10 +19,14 @@ import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.api.AdministrationService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.datafilter.TestConstants;
 import org.openmrs.module.datafilter.impl.api.db.DataFilterDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class EntityBasisMapSyncTaskTest extends BaseFilterTest {
+	
+	private static final String SYNC_TASK_TEST_DATA_XML = TestConstants.ROOT_PACKAGE_DIR
+	        + "entityBasisMapSyncTaskTestData.xml";
 	
 	@Autowired
 	private DataFilterDAO dataFilterDAO;
@@ -40,19 +45,28 @@ public class EntityBasisMapSyncTaskTest extends BaseFilterTest {
 		assertTrue(maps.isEmpty());
 	}
 	
+	/**
+	 * Happy path: patient 1001 carries a doctorAdminParentLocation person attribute whose value is the
+	 * UUID of location 4000. After the task runs, a map row must exist for patient 1001 whose
+	 * basis_identifier is the *numeric* location_id ("4000"), not the location UUID. This is the
+	 * minimum assertion that proves Blocker 2 is fixed — unit tests alone cannot exercise the Hibernate
+	 * filter, but they can prove we wrote the right value.
+	 */
 	@Test
-	public void execute_shouldBackfillPatientsWithLocationAttribute() throws Exception {
+	public void execute_shouldBackfillPatientToNumericLocationId() throws Exception {
+		executeDataSet(SYNC_TASK_TEST_DATA_XML);
+		
 		AdministrationService adminService = Context.getAdministrationService();
 		adminService.setGlobalProperty(ImplConstants.GP_ENTITY_BASIS_MAP_SYNC_ENABLED, "true");
 		
-		// Execute the task
 		EntityBasisMapSyncTask task = new EntityBasisMapSyncTask();
 		task.execute();
 		
-		// The task runs and either backfills patients or skips them if the
-		// doctorAdminParentLocation attribute type doesn't exist in the test dataset.
-		// This verifies the task executes without SQL errors.
-		assertTrue(true);
+		Collection<EntityBasisMap> maps = dataFilterDAO.getEntityBasisMaps("1001", Patient.class.getName(),
+		    Location.class.getName());
+		assertEquals(1, maps.size());
+		EntityBasisMap map = maps.iterator().next();
+		assertEquals("4000", map.getBasisIdentifier());
 	}
 	
 }
