@@ -67,8 +67,11 @@ public class DataFilterActivator extends BaseModuleActivator {
 			task.setRepeatInterval(86400L); // 24 hours
 			task.setStartOnStartup(true);
 			
-			// Schedule first run at midnight tonight
-			java.util.Calendar midnight = java.util.Calendar.getInstance();
+			// Schedule first run at midnight IST tonight. Pin the timezone explicitly so the
+			// schedule is independent of the container's JVM default timezone (UAT and prod
+			// container TZ is not guaranteed to be IST; midnight UTC, for example, is 05:30
+			// IST — during morning OPD — which would be the wrong window).
+			java.util.Calendar midnight = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
 			midnight.add(java.util.Calendar.DAY_OF_MONTH, 1);
 			midnight.set(java.util.Calendar.HOUR_OF_DAY, 0);
 			midnight.set(java.util.Calendar.MINUTE, 0);
