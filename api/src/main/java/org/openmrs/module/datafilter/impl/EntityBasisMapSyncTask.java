@@ -11,6 +11,7 @@ package org.openmrs.module.datafilter.impl;
 
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.openmrs.Location;
 import org.openmrs.Patient;
@@ -30,9 +31,16 @@ import org.slf4j.LoggerFactory;
  * catches pre-existing patients, bulk imports, or any patients that were missed by the interceptor.
  */
 public class EntityBasisMapSyncTask extends AbstractTask {
-	
+
 	private static final Logger log = LoggerFactory.getLogger(EntityBasisMapSyncTask.class);
-	
+
+	// Whitelist for the attribute type name sourced from a global property. The value is
+	// concatenated into a native SQL string (AdministrationDAO.executeSQL has no bind-param
+	// overload; the bind-param refactor lands with Gap 6's move to a @Transactional service
+	// method). Until then, reject anything that is not a plausible attribute type name so a
+	// malicious or malformed GP value cannot extend the query.
+	private static final Pattern ATTRIBUTE_TYPE_NAME_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_ -]{0,49}$");
+
 	@Override
 	public void execute() {
 		if (isExecuting) {
@@ -60,6 +68,13 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 			// where the personAttributeTypes.csv row has an empty Uuid column.
 			String attributeTypeName = adminService.getGlobalProperty(ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME,
 			    ImplConstants.DEFAULT_LOCATION_ATTRIBUTE_TYPE_NAME);
+
+			if (attributeTypeName == null || !ATTRIBUTE_TYPE_NAME_PATTERN.matcher(attributeTypeName).matches()) {
+				log.error("Entity Basis Map sync task aborted: global property '"
+				        + ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME
+				        + "' must match " + ATTRIBUTE_TYPE_NAME_PATTERN.pattern() + " (got: '" + attributeTypeName + "')");
+				return;
+			}
 			
 			AdministrationDAO adminDAO = Context.getRegisteredComponent("adminDAO", AdministrationDAO.class);
 			DataFilterDAO dataFilterDAO = Context.getRegisteredComponents(DataFilterDAO.class).get(0);
