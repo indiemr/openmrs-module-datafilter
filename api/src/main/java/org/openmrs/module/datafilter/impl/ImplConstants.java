@@ -156,7 +156,7 @@ public final class ImplConstants {
 	
 	public static final String GP_LOCATION_ATTRIBUTE_TYPE_NAME = MODULE_ID
 	        + ".entityBasisMapSyncTask.locationAttributeTypeName";
-
+	
 	public static final String DEFAULT_LOCATION_ATTRIBUTE_TYPE_NAME = "doctorAdminParentLocation";
 	
 	public static final String ILLEGAL_RECORD_ACCESS_MESSAGE = "Illegal Record Access";

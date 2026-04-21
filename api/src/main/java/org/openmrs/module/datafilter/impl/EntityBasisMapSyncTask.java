@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 import org.openmrs.Location;
 import org.openmrs.Patient;
+import org.openmrs.User;
 import org.openmrs.api.AdministrationService;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.db.AdministrationDAO;
@@ -31,16 +32,21 @@ import org.slf4j.LoggerFactory;
  * catches pre-existing patients, bulk imports, or any patients that were missed by the interceptor.
  */
 public class EntityBasisMapSyncTask extends AbstractTask {
-
+	
 	private static final Logger log = LoggerFactory.getLogger(EntityBasisMapSyncTask.class);
-
+	
 	// Whitelist for the attribute type name sourced from a global property. The value is
 	// concatenated into a native SQL string (AdministrationDAO.executeSQL has no bind-param
 	// overload; the bind-param refactor lands with Gap 6's move to a @Transactional service
 	// method). Until then, reject anything that is not a plausible attribute type name so a
 	// malicious or malformed GP value cannot extend the query.
 	private static final Pattern ATTRIBUTE_TYPE_NAME_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_ -]{0,49}$");
-
+	
+	// Well-known OpenMRS Daemon user UUID. Mirror of the protected constant
+	// org.openmrs.api.context.Daemon.DAEMON_USER_UUID — duplicated here because the core
+	// constant is not visible outside the api package.
+	private static final String DAEMON_USER_UUID = "A4F30A1B-5EB9-11DF-A648-37A07F9C90FB";
+	
 	@Override
 	public void execute() {
 		if (isExecuting) {
@@ -49,11 +55,11 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 			}
 			return;
 		}
-
+		
 		startExecuting();
 		try {
 			log.info("Starting Entity Basis Map sync task...");
-
+			
 			AdministrationService adminService = Context.getAdministrationService();
 			
 			// Check if the task is enabled
@@ -68,16 +74,30 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 			// where the personAttributeTypes.csv row has an empty Uuid column.
 			String attributeTypeName = adminService.getGlobalProperty(ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME,
 			    ImplConstants.DEFAULT_LOCATION_ATTRIBUTE_TYPE_NAME);
-
+			
 			if (attributeTypeName == null || !ATTRIBUTE_TYPE_NAME_PATTERN.matcher(attributeTypeName).matches()) {
 				log.error("Entity Basis Map sync task aborted: global property '"
-				        + ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME
-				        + "' must match " + ATTRIBUTE_TYPE_NAME_PATTERN.pattern() + " (got: '" + attributeTypeName + "')");
+				        + ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME + "' must match "
+				        + ATTRIBUTE_TYPE_NAME_PATTERN.pattern() + " (got: '" + attributeTypeName + "')");
 				return;
 			}
 			
 			AdministrationDAO adminDAO = Context.getRegisteredComponent("adminDAO", AdministrationDAO.class);
 			DataFilterDAO dataFilterDAO = Context.getRegisteredComponents(DataFilterDAO.class).get(0);
+			
+			// Resolve the creator once. Scheduled tasks may run without an authenticated user
+			// in the thread-local context; datafilter_entity_basis_map.creator is NOT NULL with
+			// an FK to users, so a null creator would fail every insert. Fall back to the
+			// well-known Daemon user when no session user is available.
+			User creator = Context.getAuthenticatedUser();
+			if (creator == null) {
+				creator = Context.getUserService().getUserByUuid(DAEMON_USER_UUID);
+			}
+			if (creator == null) {
+				log.error("Entity Basis Map sync task aborted: cannot resolve a creator user "
+				        + "(no authenticated user and daemon user lookup returned null)");
+				return;
+			}
 			
 			// Find all non-voided patients who do NOT have a location mapping in the entity basis map
 			String unlinkedPatientsQuery = "SELECT p.patient_id FROM patient p " + "WHERE p.voided = 0 "
@@ -107,14 +127,11 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 					String locationQuery = "SELECT l.location_id FROM person_attribute pa "
 					        + "JOIN person_attribute_type pat "
 					        + "  ON pa.person_attribute_type_id = pat.person_attribute_type_id "
-					        + "JOIN location l ON l.uuid = pa.value "
-					        + "WHERE pa.person_id = " + patientId + " "
-					        + "AND pat.name = '" + attributeTypeName + "' "
-					        + "AND pat.retired = 0 "
-					        + "AND pa.voided = 0";
-
+					        + "JOIN location l ON l.uuid = pa.value " + "WHERE pa.person_id = " + patientId + " "
+					        + "AND pat.name = '" + attributeTypeName + "' " + "AND pat.retired = 0 " + "AND pa.voided = 0";
+					
 					List<List<Object>> locRows = adminDAO.executeSQL(locationQuery, true);
-
+					
 					if (!locRows.isEmpty() && !locRows.get(0).isEmpty() && locRows.get(0).get(0) != null) {
 						String locationId = locRows.get(0).get(0).toString();
 						
@@ -123,7 +140,7 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 						map.setEntityType(Patient.class.getName());
 						map.setBasisIdentifier(locationId);
 						map.setBasisType(Location.class.getName());
-						map.setCreator(Context.getAuthenticatedUser());
+						map.setCreator(creator);
 						map.setDateCreated(new Date());
 						
 						dataFilterDAO.saveEntityBasisMap(map);
