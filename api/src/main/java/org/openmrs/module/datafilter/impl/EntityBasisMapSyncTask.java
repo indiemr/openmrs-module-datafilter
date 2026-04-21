@@ -55,9 +55,11 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 				return;
 			}
 			
-			// Read the person attribute type UUID for location resolution
-			String attributeTypeUuid = adminService.getGlobalProperty(ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_UUID,
-			    ImplConstants.DEFAULT_LOCATION_ATTRIBUTE_TYPE_UUID);
+			// Read the person attribute type name for location resolution. We look up by name
+			// (not UUID) because Initializer auto-generates a fresh UUID in each environment
+			// where the personAttributeTypes.csv row has an empty Uuid column.
+			String attributeTypeName = adminService.getGlobalProperty(ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME,
+			    ImplConstants.DEFAULT_LOCATION_ATTRIBUTE_TYPE_NAME);
 			
 			AdministrationDAO adminDAO = Context.getRegisteredComponent("adminDAO", AdministrationDAO.class);
 			DataFilterDAO dataFilterDAO = Context.getRegisteredComponents(DataFilterDAO.class).get(0);
@@ -92,7 +94,8 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 					        + "  ON pa.person_attribute_type_id = pat.person_attribute_type_id "
 					        + "JOIN location l ON l.uuid = pa.value "
 					        + "WHERE pa.person_id = " + patientId + " "
-					        + "AND pat.uuid = '" + attributeTypeUuid + "' "
+					        + "AND pat.name = '" + attributeTypeName + "' "
+					        + "AND pat.retired = 0 "
 					        + "AND pa.voided = 0";
 
 					List<List<Object>> locRows = adminDAO.executeSQL(locationQuery, true);

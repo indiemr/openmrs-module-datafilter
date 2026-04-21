@@ -80,11 +80,12 @@
         </description>
     </globalProperty>
     <globalProperty>
-        <property>${project.parent.artifactId}.entityBasisMapSyncTask.locationAttributeTypeUuid</property>
-        <defaultValue>6bcbb73a-bac7-4a1b-8eb4-7454cbbd08c4</defaultValue>
+        <property>${project.parent.artifactId}.entityBasisMapSyncTask.locationAttributeTypeName</property>
+        <defaultValue>doctorAdminParentLocation</defaultValue>
         <description>
-            UUID of the person attribute type storing the patient's location.
-            Default: doctorAdminParentLocation.
+            Name of the person attribute type storing the patient's location (a location UUID
+            string). Looked up by name because Initializer auto-generates the UUID per env and
+            hardcoding one causes silent "Backfilled: 0" runs outside the original dev env.
         </description>
     </globalProperty>
 
