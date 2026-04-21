@@ -10,13 +10,12 @@
     Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
     graphic logo is a trademark of OpenMRS Inc.
 
+-->
+
+<!--
     Seed data used by EntityBasisMapSyncTaskTest. Layers on top of moduleTestData.xml:
     - a person_attribute_type named "doctorAdminParentLocation"
     - a person_attribute on patient 1001 with value = location 4000's UUID
-
-    The happy-path test asserts that after the task runs, a datafilter_entity_basis_map
-    row exists with basis_identifier = "4000" (numeric), not the location UUID.
-
 -->
 
 <dataset>
