@@ -80,6 +80,12 @@ public class DataFilterActivator extends BaseModuleActivator {
 			task.setStartTime(midnight.getTime());
 			
 			schedulerService.saveTaskDefinition(task);
+			// saveTaskDefinition only persists the row. SchedulerService.onStartup()
+			// auto-schedules startOnStartup=true tasks, but it runs before module activators,
+			// so a task saved here is not picked up until the next full restart. Schedule it
+			// now so the first run happens on the configured first-run date without requiring
+			// an extra restart.
+			schedulerService.scheduleTask(task);
 			log.info("Registered Entity Basis Map Sync Task (first run at midnight: " + midnight.getTime() + ")");
 		}
 		catch (Exception e) {
