@@ -83,13 +83,20 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 				String patientId = row.get(0).toString();
 				
 				try {
-					// Look up the doctorAdminParentLocation person attribute for this patient
-					String locationQuery = "SELECT pa.value FROM person_attribute pa " + "JOIN person_attribute_type pat "
-					        + "  ON pa.person_attribute_type_id = pat.person_attribute_type_id " + "WHERE pa.person_id = "
-					        + patientId + " " + "AND pat.uuid = '" + attributeTypeUuid + "' " + "AND pa.voided = 0";
-					
+					// Look up the doctorAdminParentLocation person attribute for this patient and
+					// resolve it to the numeric location_id. The attribute stores the location's
+					// UUID string, but the entity basis map must hold the numeric location_id so
+					// filter lookups (DataFilterSessionContext.getBasisIds()) match.
+					String locationQuery = "SELECT l.location_id FROM person_attribute pa "
+					        + "JOIN person_attribute_type pat "
+					        + "  ON pa.person_attribute_type_id = pat.person_attribute_type_id "
+					        + "JOIN location l ON l.uuid = pa.value "
+					        + "WHERE pa.person_id = " + patientId + " "
+					        + "AND pat.uuid = '" + attributeTypeUuid + "' "
+					        + "AND pa.voided = 0";
+
 					List<List<Object>> locRows = adminDAO.executeSQL(locationQuery, true);
-					
+
 					if (!locRows.isEmpty() && !locRows.get(0).isEmpty() && locRows.get(0).get(0) != null) {
 						String locationId = locRows.get(0).get(0).toString();
 						
