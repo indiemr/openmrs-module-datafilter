@@ -10,7 +10,6 @@
 package org.openmrs.module.datafilter.impl;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 import org.openmrs.Location;
 import org.openmrs.Patient;
@@ -23,21 +22,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Scheduled task that backfills the {@code datafilter_entity_basis_map} table for patients who are
- * missing a location mapping. The patient's location is resolved from the
- * {@code doctorAdminParentLocation} person attribute. This task complements the
- * {@code PatientLocationLinkingInterceptor} which only handles newly created patients. This task
- * catches pre-existing patients, bulk imports, or any patients that were missed by the interceptor.
+ * Scheduled task that backfills the {@code datafilter_entity_basis_map} table for non-voided
+ * patients who do not yet have any location mapping. The patient's location is resolved from their
+ * preferred non-voided {@code patient_identifier} (which is the de-facto signal every frontend and
+ * BFF read path uses to determine workspace visibility). This task complements the
+ * {@code PatientLocationLinkingInterceptor} which only handles patients created in an authenticated
+ * session; this task catches pre-existing patients, bulk imports, or any patients the interceptor
+ * missed.
+ * <h3>Why patient_identifier, not doctorAdminParentLocation</h3> The earlier iteration sourced
+ * location from the {@code doctorAdminParentLocation} person attribute. Empirical analysis
+ * (2026-04-25) showed that attribute is never read by any frontend or BFF code path; visibility is
+ * enforced entirely by {@code patient_identifier.location_id}. The attribute is also missing on ~7%
+ * of production patients, which would cause silent invisibility once
+ * {@code locationBasedPatientFilter} flips on. Switching the source field is the only behaviour
+ * change in this iteration — everything else (skip-already-mapped semantics, the per-patient
+ * single-row write, grantAccess delegation) is preserved.
+ * <h3>Skipped patients</h3> Patients whose preferred non-voided identifier has no location, or who
+ * have no preferred non-voided identifier at all, cannot be mapped automatically. Counted in the
+ * summary log line for manual triage.
  */
 public class EntityBasisMapSyncTask extends AbstractTask {
 	
 	private static final Logger log = LoggerFactory.getLogger(EntityBasisMapSyncTask.class);
-	
-	// Whitelist for the attribute type name sourced from a global property. The value is
-	// concatenated into a native SQL string (AdministrationDAO.executeSQL has no bind-param
-	// overload). Reject anything that is not a plausible attribute type name so a malicious or
-	// malformed GP value cannot extend the query.
-	private static final Pattern ATTRIBUTE_TYPE_NAME_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_ -]{0,49}$");
 	
 	@Override
 	public void execute() {
@@ -60,28 +66,19 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 				return;
 			}
 			
-			// Look up by attribute name (not UUID) so the task works across environments where
-			// Initializer auto-generates a fresh UUID for personAttributeTypes.csv rows with an
-			// empty Uuid column.
-			String attributeTypeName = adminService.getGlobalProperty(ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME,
-			    ImplConstants.DEFAULT_LOCATION_ATTRIBUTE_TYPE_NAME);
-			
-			if (attributeTypeName == null || !ATTRIBUTE_TYPE_NAME_PATTERN.matcher(attributeTypeName).matches()) {
-				log.error("Entity Basis Map sync task aborted: global property '"
-				        + ImplConstants.GP_LOCATION_ATTRIBUTE_TYPE_NAME + "' must match "
-				        + ATTRIBUTE_TYPE_NAME_PATTERN.pattern() + " (got: '" + attributeTypeName + "')");
-				return;
-			}
-			
 			AdministrationDAO adminDAO = Context.getRegisteredComponent("adminDAO", AdministrationDAO.class);
 			DataFilterService dataFilterService = Context.getService(DataFilterService.class);
 			
-			// Find all non-voided patients who do NOT have a location mapping in the entity basis map
-			String unlinkedPatientsQuery = "SELECT p.patient_id FROM patient p " + "WHERE p.voided = 0 "
-			        + "AND p.patient_id NOT IN ("
-			        + "  SELECT CAST(entity_identifier AS UNSIGNED) FROM datafilter_entity_basis_map "
-			        + "  WHERE entity_type = '" + Patient.class.getName() + "'" + "  AND basis_type = '"
-			        + Location.class.getName() + "'" + ")";
+			// Find non-voided patients with no location mapping in the entity basis map. Patients
+			// who already have any basis_map row are left untouched — their existing mapping (from
+			// the interceptor at registration time, or from a previous run of this task) is the
+			// source of truth. NOT EXISTS with a CAST(int AS CHAR) bridge to the varchar
+			// entity_identifier column works on both H2 (test) and MySQL (prod). Schema-only
+			// fields are referenced — no user input is interpolated.
+			String unlinkedPatientsQuery = "SELECT p.patient_id FROM patient p " + "WHERE p.voided = 0 " + "AND NOT EXISTS ("
+			        + "  SELECT 1 FROM datafilter_entity_basis_map m " + "  WHERE m.entity_type = '"
+			        + Patient.class.getName() + "' " + "    AND m.basis_type = '" + Location.class.getName() + "' "
+			        + "    AND m.entity_identifier = CAST(p.patient_id AS CHAR)" + ")";
 			
 			List<List<Object>> unlinkedRows = adminDAO.executeSQL(unlinkedPatientsQuery, true);
 			
@@ -97,23 +94,26 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 				String patientId = row.get(0).toString();
 				
 				try {
-					// Resolve the patient's doctorAdminParentLocation attribute value (a location
-					// UUID string) to the numeric location_id. The entity basis map stores numeric
-					// ids so filter lookups (DataFilterSessionContext.getBasisIds()) match.
-					String locationQuery = "SELECT l.location_id FROM person_attribute pa "
-					        + "JOIN person_attribute_type pat "
-					        + "  ON pa.person_attribute_type_id = pat.person_attribute_type_id "
-					        + "JOIN location l ON l.uuid = pa.value " + "WHERE pa.person_id = " + patientId + " "
-					        + "AND pat.name = '" + attributeTypeName + "' " + "AND pat.retired = 0 " + "AND pa.voided = 0";
+					// Resolve the patient's location from their non-voided patient_identifier
+					// rows. Preferred is OpenMRS's canonical "primary" identifier — order by
+					// preferred DESC so a preferred row (when present) wins; if none exists,
+					// fall back to the earliest non-voided identifier with a location. The
+					// ORDER-then-LIMIT shape works whether the column is stored as BOOLEAN
+					// (H2 test schema) or TINYINT (MySQL prod schema). Single deterministic
+					// row per patient — same "one row per patient" semantics as the prior
+					// attribute-based scheduler.
+					String locationQuery = "SELECT pi.location_id FROM patient_identifier pi " + "WHERE pi.patient_id = "
+					        + patientId + " " + "AND pi.voided = 0 " + "AND pi.location_id IS NOT NULL "
+					        + "ORDER BY pi.preferred DESC, pi.patient_identifier_id " + "LIMIT 1";
 					
 					List<List<Object>> locRows = adminDAO.executeSQL(locationQuery, true);
 					
 					if (!locRows.isEmpty() && !locRows.get(0).isEmpty() && locRows.get(0).get(0) != null) {
 						Integer locationId = Integer.valueOf(locRows.get(0).get(0).toString());
 						
-						// Delegate to the existing @Transactional grantAccess service method — the
-						// same path vmed's SubmissionFilter uses on signup. The service opens a
-						// Spring transaction per call, which triggers Hibernate's
+						// Delegate to the existing @Transactional grantAccess service method —
+						// the same path vmed's SubmissionFilter uses on signup. The service
+						// opens a Spring transaction per call which triggers Hibernate's
 						// afterTransactionBegin() hook; without that hook the Bahmni event-api
 						// HibernateEventInterceptor NPEs on save. grantAccess also performs a
 						// hasAccess() idempotency check so re-runs are safe.
@@ -128,7 +128,7 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 					} else {
 						skipped++;
 						if (log.isDebugEnabled()) {
-							log.debug("Skipped patient " + patientId + " (no doctorAdminParentLocation attribute)");
+							log.debug("Skipped patient " + patientId + " (no non-voided identifier with location)");
 						}
 					}
 				}
@@ -141,8 +141,8 @@ public class EntityBasisMapSyncTask extends AbstractTask {
 			// Summary is log.warn so it appears in production logs under the default
 			// org.openmrs=WARN config without a log-level change. This task runs once nightly,
 			// so the noise cost is one line per day — valuable audit trail in exchange.
-			log.warn("Entity Basis Map sync task completed. Backfilled: " + backfilled + ", Skipped (no attribute): "
-			        + skipped + ", Errors: " + errors);
+			log.warn("Entity Basis Map sync task completed. Backfilled: " + backfilled
+			        + ", Skipped (no identifier-location): " + skipped + ", Errors: " + errors);
 			
 		}
 		catch (Exception e) {

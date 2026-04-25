@@ -79,16 +79,6 @@
             When true, the nightly task backfills patients missing from the entity basis map.
         </description>
     </globalProperty>
-    <globalProperty>
-        <property>${project.parent.artifactId}.entityBasisMapSyncTask.locationAttributeTypeName</property>
-        <defaultValue>doctorAdminParentLocation</defaultValue>
-        <description>
-            Name of the person attribute type storing the patient's location (a location UUID
-            string). Looked up by name because Initializer auto-generates the UUID per env and
-            hardcoding one causes silent "Backfilled: 0" runs outside the original dev env.
-        </description>
-    </globalProperty>
-
     <extension>
         <point>org.openmrs.userForm.custom.extension</point>
         <class>${project.parent.groupId}.${project.parent.artifactId}.extension.html.LocationExt</class>

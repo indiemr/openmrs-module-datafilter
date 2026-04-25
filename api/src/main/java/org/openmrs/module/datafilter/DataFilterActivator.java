@@ -62,7 +62,7 @@ public class DataFilterActivator extends BaseModuleActivator {
 			org.openmrs.scheduler.TaskDefinition task = new org.openmrs.scheduler.TaskDefinition();
 			task.setName(taskName);
 			task.setDescription("Nightly backfill of patients missing from the entity basis map "
-			        + "using the doctorAdminParentLocation person attribute.");
+			        + "using non-voided patient_identifier.location_id values.");
 			task.setTaskClass(org.openmrs.module.datafilter.impl.EntityBasisMapSyncTask.class.getName());
 			task.setRepeatInterval(86400L); // 24 hours
 			task.setStartOnStartup(true);

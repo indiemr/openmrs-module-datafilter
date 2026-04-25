@@ -13,29 +13,132 @@
 -->
 
 <!--
-    Seed data used by EntityBasisMapSyncTaskTest. Layers on top of moduleTestData.xml:
-    - a person_attribute_type named "doctorAdminParentLocation"
-    - a person_attribute on patient 1001 with value = location 4000's UUID
+    Seed data for EntityBasisMapSyncTaskTest. Layered on top of moduleTestData.xml
+    which already provides:
+      - location 4000 (Trinidad), 4001 (England), 4002 (Uganda; parent=4001)
+      - patient 1001 with identifier at 4000, AND a pre-existing basis_map row
+      - patient 1002 with identifier at 4001, AND a pre-existing basis_map row
+      - patient 1003 with identifier at 4002, AND a pre-existing basis_map row
+
+    The 1001/1002/1003 trio is unsuitable for happy-path coverage because their
+    basis_map rows already exist in the base fixture — running the task wouldn't
+    change anything observable. Tests below operate on a fresh 2001-2008 cohort
+    instead, with one fresh patient per edge case.
+
+    OpenMRS schema: every patient_id requires a matching person_id row. Person
+    ids are kept identical to patient ids for clarity.
+
+    Identifier type 2 is the standard OpenMRS test identifier type from
+    moduleTestData.xml.
 -->
 
 <dataset>
-    <person_attribute_type person_attribute_type_id="8000"
-                           name="doctorAdminParentLocation"
-                           description="Parent location of the patient's doctor/admin (stores location UUID)"
-                           format="java.lang.String"
-                           searchable="false"
-                           creator="1"
-                           date_created="2026-04-20 00:00:00.0"
-                           retired="false"
-                           sort_weight="0"
-                           uuid="a1a0c6a1-4f2e-4a3b-8c1f-eb00cd010101" />
+    <!-- 2001: orphan — no identifiers at all. Should be counted as skipped. -->
+    <person person_id="2001" gender="M" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+            uuid="00002001-0000-0000-0000-000000000000" />
+    <patient patient_id="2001" creator="1" date_created="2026-04-25 00:00:00.0" voided="false" />
 
-    <person_attribute person_attribute_id="9000"
-                      person_id="1001"
-                      value="1d6c993e-c2cc-11de-8d13-0010c6dffd0e"
-                      person_attribute_type_id="8000"
-                      creator="1"
-                      date_created="2026-04-20 00:00:00.0"
-                      voided="false"
-                      uuid="a1a0c6a1-4f2e-4a3b-8c1f-eb00cd020202" />
+    <!-- 2002: orphan — only a voided identifier. Should be counted as skipped. -->
+    <person person_id="2002" gender="F" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+            uuid="00002002-0000-0000-0000-000000000000" />
+    <patient patient_id="2002" creator="1" date_created="2026-04-25 00:00:00.0" voided="false" />
+    <patient_identifier patient_identifier_id="6002" patient_id="2002" identifier="VOID-2002"
+                        identifier_type="2" preferred="1" location_id="4000"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="true"
+                        date_voided="2026-04-25 00:00:00.0" voided_by="1" void_reason="test"
+                        uuid="00006002-0000-0000-0000-000000000000" />
+
+    <!-- 2003: orphan — single non-voided identifier with NULL location_id.
+         Should be counted as skipped (no location signal).
+         The literal "[NULL]" sentinel is interpreted as SQL NULL by DBUnit's
+         ReplacementDataSet (configured in OpenMRS BaseModuleContextSensitiveTest).
+         If this fixture is ever loaded outside that base class the sentinel will
+         insert as a literal string — keep the loading path consistent. -->
+    <person person_id="2003" gender="M" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+            uuid="00002003-0000-0000-0000-000000000000" />
+    <patient patient_id="2003" creator="1" date_created="2026-04-25 00:00:00.0" voided="false" />
+    <patient_identifier patient_identifier_id="6003" patient_id="2003" identifier="NOLOC-2003"
+                        identifier_type="2" preferred="1" location_id="[NULL]"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+                        uuid="00006003-0000-0000-0000-000000000000" />
+
+    <!-- 2004: voided patient with a perfectly valid identifier. Must NOT be
+         backfilled — voided patients fall outside the population. -->
+    <person person_id="2004" gender="F" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="true"
+            date_voided="2026-04-25 00:00:00.0" voided_by="1" void_reason="test"
+            uuid="00002004-0000-0000-0000-000000000000" />
+    <patient patient_id="2004" creator="1" date_created="2026-04-25 00:00:00.0" voided="true"
+             date_voided="2026-04-25 00:00:00.0" voided_by="1" void_reason="test" />
+    <patient_identifier patient_identifier_id="6004" patient_id="2004" identifier="VOID-PT-2004"
+                        identifier_type="2" preferred="1" location_id="4000"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+                        uuid="00006004-0000-0000-0000-000000000000" />
+
+    <!-- 2005: multi-identifier patient — preferred=1 at 4000, preferred=0 at 4001.
+         The scheduler picks ONE row per patient (ORDER BY preferred DESC LIMIT 1),
+         so the resulting basis_map row points to 4000 only. The non-preferred row
+         exists to prove the ORDER BY is doing its job. -->
+    <person person_id="2005" gender="M" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+            uuid="00002005-0000-0000-0000-000000000000" />
+    <patient patient_id="2005" creator="1" date_created="2026-04-25 00:00:00.0" voided="false" />
+    <patient_identifier patient_identifier_id="6005" patient_id="2005" identifier="MERGE-A-2005"
+                        identifier_type="2" preferred="1" location_id="4000"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+                        uuid="00006005-0000-0000-0000-000000000000" />
+    <patient_identifier patient_identifier_id="6006" patient_id="2005" identifier="MERGE-B-2005"
+                        identifier_type="2" preferred="0" location_id="4001"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+                        uuid="00006006-0000-0000-0000-000000000000" />
+
+    <!-- 2006: parent/child coexistence — already has a basis_map row at parent
+         location 4001 (legacy attribute-based output). Identifier sits at child
+         location 4002. New scheduler must add a row for 4002 and leave the
+         legacy 4001 row untouched. -->
+    <person person_id="2006" gender="F" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+            uuid="00002006-0000-0000-0000-000000000000" />
+    <patient patient_id="2006" creator="1" date_created="2026-04-25 00:00:00.0" voided="false" />
+    <patient_identifier patient_identifier_id="6007" patient_id="2006" identifier="MIX-2006"
+                        identifier_type="2" preferred="1" location_id="4002"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+                        uuid="00006007-0000-0000-0000-000000000000" />
+    <datafilter_entity_basis_map entity_basis_map_id="9001"
+                                  entity_identifier="2006" entity_type="org.openmrs.Patient"
+                                  basis_identifier="4001" basis_type="org.openmrs.Location"
+                                  creator="1" date_created="2026-04-25 00:00:00.0"
+                                  uuid="00009001-0000-0000-0000-000000000000" />
+
+    <!-- 2007: idempotency — basis_map row already exists at the same location
+         the identifier reports. Must not produce a duplicate. -->
+    <person person_id="2007" gender="M" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+            uuid="00002007-0000-0000-0000-000000000000" />
+    <patient patient_id="2007" creator="1" date_created="2026-04-25 00:00:00.0" voided="false" />
+    <patient_identifier patient_identifier_id="6008" patient_id="2007" identifier="IDEMP-2007"
+                        identifier_type="2" preferred="1" location_id="4000"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+                        uuid="00006008-0000-0000-0000-000000000000" />
+    <datafilter_entity_basis_map entity_basis_map_id="9002"
+                                  entity_identifier="2007" entity_type="org.openmrs.Patient"
+                                  basis_identifier="4000" basis_type="org.openmrs.Location"
+                                  creator="1" date_created="2026-04-25 00:00:00.0"
+                                  uuid="00009002-0000-0000-0000-000000000000" />
+
+    <!-- 2008: happy-path patient — fresh, no pre-existing basis_map row.
+         Single non-voided identifier at location 4000. Must end up with exactly
+         one basis_map row whose basis_identifier equals "4000" (the numeric
+         location_id, not the location UUID — Blocker 2 regression check). -->
+    <person person_id="2008" gender="F" birthdate="1990-01-01 00:00:00.0" birthdate_estimated="0"
+            dead="false" creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+            uuid="00002008-0000-0000-0000-000000000000" />
+    <patient patient_id="2008" creator="1" date_created="2026-04-25 00:00:00.0" voided="false" />
+    <patient_identifier patient_identifier_id="6009" patient_id="2008" identifier="HAPPY-2008"
+                        identifier_type="2" preferred="1" location_id="4000"
+                        creator="1" date_created="2026-04-25 00:00:00.0" voided="false"
+                        uuid="00006009-0000-0000-0000-000000000000" />
 </dataset>
