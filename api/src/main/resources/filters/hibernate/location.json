@@ -32,11 +32,12 @@
     {
         "name": "datafilter_locationBasedObsFilter",
         "targetClasses": ["org.openmrs.Obs"],
-        "condition": "person_id IN (
-                        SELECT DISTINCT datafilter_ebm.entity_identifier FROM datafilter_entity_basis_map datafilter_ebm
-                            WHERE datafilter_ebm.entity_type = 'org.openmrs.Patient'
-                            AND datafilter_ebm.basis_type = 'org.openmrs.Location'
-                            AND datafilter_ebm.basis_identifier IN (:basisIds))",
+        "condition": "(person_id NOT IN (SELECT datafilter_p.patient_id FROM patient datafilter_p)
+                        OR person_id IN (
+                            SELECT DISTINCT datafilter_ebm.entity_identifier FROM datafilter_entity_basis_map datafilter_ebm
+                                WHERE datafilter_ebm.entity_type = 'org.openmrs.Patient'
+                                AND datafilter_ebm.basis_type = 'org.openmrs.Location'
+                                AND datafilter_ebm.basis_identifier IN (:basisIds)))",
         "parameters": [
             {
                 "name": "basisIds",
