@@ -20,6 +20,7 @@ import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED
 import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED_FILTER_NAME_OBS;
 import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED_FILTER_NAME_PATIENT;
 import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED_FILTER_NAME_PROVIDER;
+import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED_FILTER_NAME_RELATIONSHIP;
 import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED_FILTER_NAME_USER;
 import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED_FILTER_NAME_VISIT;
 import static org.openmrs.module.datafilter.impl.ImplConstants.GP_LOCATION_BASED_FULL_TEXT_FILTER_PATIENT;
@@ -46,6 +47,7 @@ public class DataFilterTestUtils {
 		as.setGlobalProperty(GP_LOCATION_BASED_FILTER_NAME_PROVIDER, "true");
 		as.setGlobalProperty(GP_LOCATION_BASED_FILTER_NAME_DIAGNOSIS, "true");
 		as.setGlobalProperty(GP_LOCATION_BASED_FILTER_NAME_CONDITION, "true");
+		as.setGlobalProperty(GP_LOCATION_BASED_FILTER_NAME_RELATIONSHIP, "true");
 		as.setGlobalProperty(GP_LOCATION_FILTER_NAME, "true");
 		Context.flushSession();
 	}
