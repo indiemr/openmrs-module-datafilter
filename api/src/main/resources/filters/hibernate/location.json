@@ -141,5 +141,27 @@
                 "type": "string"
             }
         ]
+    },
+    {
+        "name": "datafilter_locationBasedRelationshipFilter",
+        "targetClasses": ["org.openmrs.Relationship"],
+        "condition": "((person_a NOT IN (SELECT datafilter_pa.patient_id FROM patient datafilter_pa)
+                         AND person_b NOT IN (SELECT datafilter_pb.patient_id FROM patient datafilter_pb))
+                       OR person_a IN (
+                            SELECT DISTINCT datafilter_ebm.entity_identifier FROM datafilter_entity_basis_map datafilter_ebm
+                                WHERE datafilter_ebm.entity_type = 'org.openmrs.Patient'
+                                AND datafilter_ebm.basis_type = 'org.openmrs.Location'
+                                AND datafilter_ebm.basis_identifier IN (:basisIds))
+                       OR person_b IN (
+                            SELECT DISTINCT datafilter_ebm2.entity_identifier FROM datafilter_entity_basis_map datafilter_ebm2
+                                WHERE datafilter_ebm2.entity_type = 'org.openmrs.Patient'
+                                AND datafilter_ebm2.basis_type = 'org.openmrs.Location'
+                                AND datafilter_ebm2.basis_identifier IN (:basisIds)))",
+        "parameters": [
+            {
+                "name": "basisIds",
+                "type": "string"
+            }
+        ]
     }
 ]
