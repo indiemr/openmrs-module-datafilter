@@ -19,4 +19,6 @@
     <relationship relationship_id="3001" person_a="500001" relationship="2" person_b="1002" creator="1" date_created="2019-05-01 00:00:00.0" voided="false" uuid="be51929c-3bca-46d4-a4dc-9198f6b2874a" />
     <!-- guardian (500001) <-> guardian (500002), neither side a patient -->
     <relationship relationship_id="3002" person_a="500001" relationship="2" person_b="500002" creator="1" date_created="2019-05-01 00:00:00.0" voided="false" uuid="ce51929c-3bca-46d4-a4dc-9198f6b2874a" />
+    <!-- patient 1001 (basis location 4000) <-> patient 1002 (basis location 4001), both sides patients, different workspaces -->
+    <relationship relationship_id="3003" person_a="1001" relationship="2" person_b="1002" creator="1" date_created="2019-05-01 00:00:00.0" voided="false" uuid="de51929c-3bca-46d4-a4dc-9198f6b2874a" />
 </dataset>
