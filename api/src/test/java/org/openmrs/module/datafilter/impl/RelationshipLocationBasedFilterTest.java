@@ -83,6 +83,24 @@ public class RelationshipLocationBasedFilterTest extends BaseFilterTest {
 	}
 	
 	@Test
+	public void getRelationshipsByPerson_shouldReturnPatientRelationshipsWhereOnlyOneSideIsAccessible() {
+		reloginAs("dyorke", "test");
+		//patient1001 (basis 4000, accessible) <-> patient1002 (basis 4001, NOT accessible): the row IS
+		//returned because one side is accessible — hiding it would hide a patient's own relationships.
+		//Accepted residual: the inaccessible counterparty's identity is exposed via association-nav.
+		Collection<Relationship> relationships = personService.getRelationshipsByPerson(new Person(1001));
+		assertEquals(2, relationships.size());
+		assertTrue(TestUtil.containsId(relationships, 3000));
+		assertTrue(TestUtil.containsId(relationships, 3003));
+		
+		//querying by the INACCESSIBLE side still only returns rows that touch an accessible patient:
+		//guardian<->patient1002 (3001) stays hidden because neither participant is accessible to dyorke
+		relationships = personService.getRelationshipsByPerson(new Person(1002));
+		assertEquals(1, relationships.size());
+		assertTrue(TestUtil.containsId(relationships, 3003));
+	}
+	
+	@Test
 	public void getRelationshipsByPerson_shouldReturnAllRelationshipsIfLocationFilteringIsDisabled() {
 		DataFilterTestUtils.disableLocationFiltering();
 		reloginAs("dyorke", "test");
