@@ -89,6 +89,12 @@
                                         AND datafilter_ebm.basis_identifier IN (:basisIds)
                                 )
                         )
+                        OR provider_id IN (
+                            SELECT DISTINCT datafilter_ebm2.entity_identifier FROM datafilter_entity_basis_map datafilter_ebm2
+                                WHERE datafilter_ebm2.entity_type = 'org.openmrs.Provider'
+                                AND datafilter_ebm2.basis_type = 'org.openmrs.Location'
+                                AND datafilter_ebm2.basis_identifier IN (:basisIds)
+                        )
                        )",
         "parameters": [
             {
