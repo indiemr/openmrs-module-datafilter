@@ -72,7 +72,13 @@
             reference application.
         </description>
     </globalProperty>
-
+    <globalProperty>
+        <property>${project.parent.artifactId}.entityBasisMapSyncTask.enabled</property>
+        <defaultValue>true</defaultValue>
+        <description>
+            When true, the nightly task backfills patients missing from the entity basis map.
+        </description>
+    </globalProperty>
     <extension>
         <point>org.openmrs.userForm.custom.extension</point>
         <class>${project.parent.groupId}.${project.parent.artifactId}.extension.html.LocationExt</class>

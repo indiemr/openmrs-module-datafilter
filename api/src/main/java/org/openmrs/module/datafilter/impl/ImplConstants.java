@@ -152,6 +152,8 @@ public final class ImplConstants {
 	
 	public static final String GP_PAT_LOC_INTERCEPTOR_ENABLED = MODULE_ID + ".patientLocationLinkingInterceptor" + ENABLED;
 	
+	public static final String GP_ENTITY_BASIS_MAP_SYNC_ENABLED = MODULE_ID + ".entityBasisMapSyncTask" + ENABLED;
+	
 	public static final String ILLEGAL_RECORD_ACCESS_MESSAGE = "Illegal Record Access";
 	
 }
