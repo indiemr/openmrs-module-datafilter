@@ -13,6 +13,7 @@ import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.openmrs.api.context.Context;
+import org.openmrs.util.PrivilegeConstants;
 
 final class InterceptorUtil {
 	
@@ -28,10 +29,20 @@ final class InterceptorUtil {
 		//the GP value below and we end up in this method again, therefore we need to disable auto flush
 		final FlushMode flushMode = session.getHibernateFlushMode();
 		session.setHibernateFlushMode(FlushMode.MANUAL);
+		//Core 2.6.10+/2.7+ requires the Get Global Properties privilege to read a GP (TRUNK-6203), an anonymous
+		//request that loads a filtered entity would otherwise fail, proxy the privilege for this read only
+		boolean proxied = false;
+		if (Context.isSessionOpen()) {
+			Context.addProxyPrivilege(PrivilegeConstants.GET_GLOBAL_PROPERTIES);
+			proxied = true;
+		}
 		try {
 			return Context.getAdministrationService().getGlobalProperty(gpName);
 		}
 		finally {
+			if (proxied) {
+				Context.removeProxyPrivilege(PrivilegeConstants.GET_GLOBAL_PROPERTIES);
+			}
 			//reset
 			session.setHibernateFlushMode(flushMode);
 		}

@@ -79,7 +79,9 @@ public class AccessInterceptor extends EmptyInterceptor {
 			boolean isAuthenticated = false;
 			
 			try {
-				if (Context.isAuthenticated()) {
+				//Check for a session first, on core 2.4.6+/2.5.12+/2.6.1+/2.7+ isAuthenticated() logs a full stack trace
+				//when there is no UserContext (TRUNK-6173), e.g. once per entity on hibernate search indexer threads
+				if (Context.isSessionOpen() && Context.isAuthenticated()) {
 					isAuthenticated = true;
 				}
 			}
