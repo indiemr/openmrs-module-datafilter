@@ -10,9 +10,11 @@
 package org.openmrs.module.datafilter.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -23,6 +25,7 @@ import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.Location;
 import org.openmrs.Obs;
+import org.openmrs.Person;
 import org.openmrs.api.ObsService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.datafilter.TestConstants;
@@ -94,6 +97,39 @@ public class ObsLocationBasedFilterTest extends BaseFilterTest {
 		DataFilterTestUtils.disableLocationFiltering();
 		reloginAs("dyorke", "test");
 		assertEquals(3, getObservations().size());
+	}
+	
+	@Test
+	public void getObs_shouldReturnObsForNonPatientPersonRegardlessOfBasisAccess() {
+		executeDataSet(TestConstants.ROOT_PACKAGE_DIR + "otherPersonsThatAreNotPatients.xml");
+		executeDataSet(TestConstants.ROOT_PACKAGE_DIR + "nonPatientObservations.xml");
+		//AccessInterceptor's strict-mode safety net has its own hardcoded accessible-person-ids check
+		//with no non-patient escape (separate from the Hibernate filter under test here); prod runs
+		//with strict mode off, so match that here to isolate the filter-level behavior being tested.
+		Context.getAdministrationService().setGlobalProperty(ImplConstants.GP_RUN_IN_STRICT_MODE, "false");
+		Context.flushSession();
+		reloginAs("dBeckham", "test");
+		List<Obs> obs = obsService.getObservationsByPerson(new Person(500001));
+		assertEquals(1, obs.size());
+		assertTrue(TestUtil.containsId(obs, 2000));
+	}
+	
+	@Test
+	public void getObs_shouldKeepPatientObsScopedWhenReturningNonPatientObs() {
+		executeDataSet(TestConstants.ROOT_PACKAGE_DIR + "otherPersonsThatAreNotPatients.xml");
+		executeDataSet(TestConstants.ROOT_PACKAGE_DIR + "nonPatientObservations.xml");
+		Context.getAdministrationService().setGlobalProperty(ImplConstants.GP_RUN_IN_STRICT_MODE, "false");
+		Context.flushSession();
+		reloginAs("dyorke", "test");
+		List<Person> persons = Arrays.asList(new Person(500001), new Person(1001), new Person(1002));
+		List<Obs> obs = obsService.getObservations(persons, null, null, null, null, null, null, null, null, null, null,
+		    false);
+		//non-patient 500001 (escaped) + patient 1001 (basis 4000, granted); patient 1002 (basis 4001) stays hidden
+		assertEquals(3, obs.size());
+		assertTrue(TestUtil.containsId(obs, 2000));
+		assertTrue(TestUtil.containsId(obs, 1001));
+		assertTrue(TestUtil.containsId(obs, 1002));
+		assertFalse(TestUtil.containsId(obs, 1003));
 	}
 	
 }
