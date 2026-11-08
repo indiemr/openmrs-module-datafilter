@@ -10,6 +10,7 @@
 package org.openmrs.module.datafilter.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -128,6 +129,7 @@ public class ObsLocationBasedFilterTest extends BaseFilterTest {
 		assertTrue(TestUtil.containsId(obs, 2000));
 		assertTrue(TestUtil.containsId(obs, 1001));
 		assertTrue(TestUtil.containsId(obs, 1002));
+		assertFalse(TestUtil.containsId(obs, 1003));
 	}
 	
 }
