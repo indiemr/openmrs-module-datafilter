@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+
+    This Source Code Form is subject to the terms of the Mozilla Public License,
+    v. 2.0. If a copy of the MPL was not distributed with this file, You can
+    obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+    the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+
+    Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
+    graphic logo is a trademark of OpenMRS Inc.
+
+-->
+
+<!--
+    One drug order and one test order per patient. Patients 1001 (location 4000), 1002 (4001) and
+    1003 (4002, a child of 4001) and their basis rows come from moduleTestData.xml. Order types 1
+    (Drug order) and 2 (Test order), care setting 1 and provider 1 come from the core standard test
+    dataset. Every order is placed by provider 1, who is not one of the test users, so visibility
+    cannot come from being the orderer.
+-->
+<dataset>
+    <privilege privilege="Get Orders" description="Able to view orders" uuid="0d1a7c3e-5f4b-4e2a-9c61-3b8f2e7a1d01" />
+    <role_privilege role="Physician" privilege="Get Orders" />
+
+    <encounter encounter_id="3000" encounter_type="1" patient_id="1001" location_id="4000" encounter_datetime="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="0" uuid="6e1d0f3a-2b4c-4d5e-8f60-7a8b9c0d3000" />
+    <encounter encounter_id="3001" encounter_type="1" patient_id="1002" location_id="4001" encounter_datetime="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="0" uuid="6e1d0f3a-2b4c-4d5e-8f60-7a8b9c0d3001" />
+    <encounter encounter_id="3002" encounter_type="1" patient_id="1003" location_id="4002" encounter_datetime="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="0" uuid="6e1d0f3a-2b4c-4d5e-8f60-7a8b9c0d3002" />
+
+    <orders order_id="10001" order_type_id="1" order_number="DF-10001" urgency="ROUTINE" order_action="NEW" concept_id="88" orderer="1" date_activated="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="false" patient_id="1001" care_setting="1" encounter_id="3000" uuid="9c2b4e6a-1d3f-4a5b-8c7d-0e1f2a310001" />
+    <orders order_id="10002" order_type_id="2" order_number="DF-10002" urgency="ROUTINE" order_action="NEW" concept_id="5497" orderer="1" date_activated="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="false" patient_id="1001" care_setting="1" encounter_id="3000" uuid="9c2b4e6a-1d3f-4a5b-8c7d-0e1f2a310002" />
+    <orders order_id="10003" order_type_id="1" order_number="DF-10003" urgency="ROUTINE" order_action="NEW" concept_id="88" orderer="1" date_activated="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="false" patient_id="1002" care_setting="1" encounter_id="3001" uuid="9c2b4e6a-1d3f-4a5b-8c7d-0e1f2a310003" />
+    <orders order_id="10004" order_type_id="2" order_number="DF-10004" urgency="ROUTINE" order_action="NEW" concept_id="5497" orderer="1" date_activated="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="false" patient_id="1002" care_setting="1" encounter_id="3001" uuid="9c2b4e6a-1d3f-4a5b-8c7d-0e1f2a310004" />
+    <orders order_id="10005" order_type_id="1" order_number="DF-10005" urgency="ROUTINE" order_action="NEW" concept_id="88" orderer="1" date_activated="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="false" patient_id="1003" care_setting="1" encounter_id="3002" uuid="9c2b4e6a-1d3f-4a5b-8c7d-0e1f2a310005" />
+    <orders order_id="10006" order_type_id="2" order_number="DF-10006" urgency="ROUTINE" order_action="NEW" concept_id="5497" orderer="1" date_activated="2019-05-24 11:00:00.0" creator="1" date_created="2019-05-24 11:00:00.0" voided="false" patient_id="1003" care_setting="1" encounter_id="3002" uuid="9c2b4e6a-1d3f-4a5b-8c7d-0e1f2a310006" />
+
+    <drug_order order_id="10001" as_needed="false" dispense_as_written="false" />
+    <drug_order order_id="10003" as_needed="false" dispense_as_written="false" />
+    <drug_order order_id="10005" as_needed="false" dispense_as_written="false" />
+
+    <test_order order_id="10002" />
+    <test_order order_id="10004" />
+    <test_order order_id="10006" />
+</dataset>
