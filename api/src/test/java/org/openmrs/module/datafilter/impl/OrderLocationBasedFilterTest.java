@@ -168,4 +168,9 @@ public class OrderLocationBasedFilterTest extends BaseFilterTest {
 		assertEquals(OWN_ORDER_IDS, orderIds(orderService.getActiveOrders(patient, null, null, null)));
 	}
 	
+	@Test
+	public void orderFilterGlobalProperty_shouldMatchTheNameTheConfigSeedDeclares() {
+		assertEquals(ORDER_FILTER_DISABLED_GP, ImplConstants.GP_LOCATION_BASED_FILTER_NAME_ORDER);
+	}
+	
 }
