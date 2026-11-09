@@ -117,7 +117,7 @@ public class UtilTest {
 	
 	@Test
 	public void loadHibernateFilterRegistrations_shouldLoadAllHibernateFilterRegistrations() {
-		assertEquals(21, Util.getHibernateFilterRegistrations().size());
+		assertEquals(22, Util.getHibernateFilterRegistrations().size());
 	}
 	
 	@Test
