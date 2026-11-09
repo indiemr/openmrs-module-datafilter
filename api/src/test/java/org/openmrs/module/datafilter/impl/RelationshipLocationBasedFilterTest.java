@@ -28,6 +28,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 public class RelationshipLocationBasedFilterTest extends BaseFilterTest {
 	
+	/**
+	 * The global property the indiemr-config seed file declares for this filter. Kept as a literal so
+	 * that a rename of the constant in code fails a test instead of silently orphaning the seed row, a
+	 * missing row means the filter is enforcing.
+	 */
+	private static final String RELATIONSHIP_FILTER_DISABLED_GP = "datafilter_locationBasedRelationshipFilter.disabled";
+	
 	@Autowired
 	private PersonService personService;
 	
@@ -105,6 +112,11 @@ public class RelationshipLocationBasedFilterTest extends BaseFilterTest {
 		DataFilterTestUtils.disableLocationFiltering();
 		reloginAs("dyorke", "test");
 		assertEquals(3, getGuardianRelationships().size());
+	}
+	
+	@Test
+	public void relationshipFilterGlobalProperty_shouldMatchTheNameTheConfigSeedDeclares() {
+		assertEquals(RELATIONSHIP_FILTER_DISABLED_GP, ImplConstants.GP_LOCATION_BASED_FILTER_NAME_RELATIONSHIP);
 	}
 	
 }
